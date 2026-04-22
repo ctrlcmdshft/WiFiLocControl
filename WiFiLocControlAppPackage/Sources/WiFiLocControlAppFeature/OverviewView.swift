@@ -4,34 +4,22 @@ struct OverviewView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HeaderView(title: "WiFiLocControl", subtitle: model.message)
-
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 12) {
-                GridRow {
-                    StatusItem(title: "Current Wi-Fi", value: model.systemStatus.currentWiFi.isEmpty ? "Unavailable" : model.systemStatus.currentWiFi)
-                    StatusItem(title: "Network Location", value: model.systemStatus.currentLocation.isEmpty ? "Unknown" : model.systemStatus.currentLocation)
-                }
-                GridRow {
-                    StatusItem(title: "Core Script", value: model.systemStatus.coreInstalled ? "Installed" : "Missing", ok: model.systemStatus.coreInstalled)
-                    StatusItem(title: "LaunchAgent", value: model.systemStatus.launchAgentLoaded ? "Loaded" : "Not loaded", ok: model.systemStatus.launchAgentLoaded)
-                }
+        Form {
+            Section("Status") {
+                LabeledContent("Current Wi-Fi", value: model.systemStatus.currentWiFi.isEmpty ? "Unavailable" : model.systemStatus.currentWiFi)
+                LabeledContent("Network Location", value: model.systemStatus.currentLocation.isEmpty ? "Unknown" : model.systemStatus.currentLocation)
+                StatusRow("Core Script", isOK: model.systemStatus.coreInstalled, okText: "Installed", missingText: "Missing")
+                StatusRow("LaunchAgent", isOK: model.systemStatus.launchAgentLoaded, okText: "Loaded", missingText: "Not Loaded")
             }
 
-            GroupBox("Service") {
-                HStack(spacing: 12) {
+            Section("Service") {
+                HStack {
                     Button {
                         model.installCore()
                     } label: {
                         Label("Install or Repair", systemImage: "wrench.and.screwdriver")
                     }
                     .buttonStyle(.borderedProminent)
-
-                    Button {
-                        model.save()
-                    } label: {
-                        Label("Save Configuration", systemImage: "square.and.arrow.down")
-                    }
 
                     Button {
                         model.runNow()
@@ -41,85 +29,53 @@ struct OverviewView: View {
                     .disabled(!model.systemStatus.coreInstalled)
 
                     Button {
-                        model.refresh()
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-
-                    Button {
                         model.openConfigFolder()
                     } label: {
                         Label("Open Config", systemImage: "folder")
                     }
                 }
-                .controlSize(.large)
-                .padding(.vertical, 4)
             }
 
-            GroupBox("Optional Tools") {
-                VStack(alignment: .leading, spacing: 10) {
-                    ToolRow(name: "SwitchAudioSource", installed: model.systemStatus.switchAudioInstalled, detail: "Audio output switching")
-                    ToolRow(name: "brightness", installed: model.systemStatus.brightnessInstalled, detail: "Display brightness control")
-                    ToolRow(name: "terminal-notifier", installed: model.systemStatus.terminalNotifierInstalled, detail: "Switch notifications")
+            Section("Optional Tools") {
+                ToolRow(name: "SwitchAudioSource", installed: model.systemStatus.switchAudioInstalled, detail: "Audio output")
+                ToolRow(name: "brightness", installed: model.systemStatus.brightnessInstalled, detail: "Display brightness")
+                ToolRow(name: "terminal-notifier", installed: model.systemStatus.terminalNotifierInstalled, detail: "Notifications")
 
-                    Button {
-                        model.installOptionalTools()
-                    } label: {
-                        Label("Install Missing Homebrew Tools", systemImage: "shippingbox")
-                    }
-                    .disabled(model.isBusy)
+                Button {
+                    model.installOptionalTools()
+                } label: {
+                    Label("Install Missing Tools", systemImage: "shippingbox")
                 }
-                .padding(.vertical, 4)
+                .disabled(model.isBusy)
             }
-
-            Spacer()
         }
-        .padding(24)
-        .toolbar {
-            ProgressView()
-                .opacity(model.isBusy ? 1 : 0)
-        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, 10)
+        .frame(maxWidth: 620, alignment: .leading)
+        .navigationTitle("Overview")
     }
 }
 
-struct HeaderView: View {
+private struct StatusRow: View {
     var title: String
-    var subtitle: String
+    var isOK: Bool
+    var okText: String
+    var missingText: String
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 30, weight: .semibold))
-            Text(subtitle)
-                .foregroundStyle(.secondary)
-        }
+    init(_ title: String, isOK: Bool, okText: String, missingText: String) {
+        self.title = title
+        self.isOK = isOK
+        self.okText = okText
+        self.missingText = missingText
     }
-}
-
-private struct StatusItem: View {
-    var title: String
-    var value: String
-    var ok: Bool? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack {
-                if let ok {
-                    Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(ok ? .green : .orange)
-                }
-                Text(value)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
+        LabeledContent(title) {
+            Label(isOK ? okText : missingText, systemImage: isOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isOK ? .green : .orange)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -129,16 +85,22 @@ private struct ToolRow: View {
     var detail: String
 
     var body: some View {
-        HStack {
-            Image(systemName: installed ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(installed ? .green : .secondary)
-            VStack(alignment: .leading) {
-                Text(name)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
+        LabeledContent {
             Text(installed ? "Installed" : "Missing")
-                .foregroundStyle(installed ? .green : .secondary)
+                .foregroundStyle(installed ? .primary : .secondary)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: installed ? "checkmark.circle.fill" : "circle")
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(installed ? .green : .secondary)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(name)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }

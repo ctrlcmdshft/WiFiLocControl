@@ -8,6 +8,7 @@ public final class AppModel {
     public var addonState = AddonState()
     public var systemStatus = SystemStatus()
     public var logText = ""
+    public var logInfo = LogInfo()
     public var message = "Ready"
     public var isBusy = false
 
@@ -27,6 +28,7 @@ public final class AppModel {
         aliases = store.loadAliases()
         addonState = store.loadAddonState(locations: profiles.map(\.name))
         logText = store.readLogTail()
+        logInfo.byteCount = store.logByteCount()
         systemStatus = loadSystemStatus()
         message = "Refreshed"
     }
@@ -62,6 +64,18 @@ public final class AppModel {
         let result = shell.run("/usr/local/bin/wifi-loc-control.sh")
         message = result.status == 0 ? "Location check ran" : "Location check failed: \(result.error)"
         logText = store.readLogTail()
+        logInfo.byteCount = store.logByteCount()
+    }
+
+    public func clearLog() {
+        do {
+            try store.clearLog()
+            logText = ""
+            logInfo.byteCount = 0
+            message = "Log cleared"
+        } catch {
+            message = "Clear log failed: \(error.localizedDescription)"
+        }
     }
 
     public func openConfigFolder() {
@@ -102,6 +116,7 @@ public final class AppModel {
         status.switchAudioInstalled = shell.existsInPath("SwitchAudioSource")
         status.brightnessInstalled = shell.existsInPath("brightness")
         status.terminalNotifierInstalled = shell.existsInPath("terminal-notifier")
+        status.audioOutputDevices = loadAudioOutputDevices()
         status.vpnProfiles = loadVPNProfiles()
         return status
     }
@@ -139,11 +154,17 @@ public final class AppModel {
 
     private func loadVPNProfiles() -> [String] {
         let output = shell.run("/usr/sbin/scutil", ["--nc", "list"]).output
-        return output.split(separator: "\n").compactMap { line in
-            guard line.contains("[VPN") else { return nil }
-            let parts = line.split(separator: "\"")
-            return parts.count >= 2 ? String(parts[1]) : nil
-        }
+        return output.split(separator: "\n").compactMap { parseVPNProfileName(String($0)) }
+    }
+
+    private func loadAudioOutputDevices() -> [String] {
+        guard shell.existsInPath("SwitchAudioSource") else { return [] }
+        let result = shell.run("/usr/bin/env", ["bash", "-lc", "SwitchAudioSource -a -t output"])
+        guard result.status == 0 else { return [] }
+        return result.output
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private func installPrivilegedCoreScript() throws {
@@ -252,4 +273,16 @@ private func appleScriptString(_ value: String) -> String {
         .replacingOccurrences(of: "\\", with: "\\\\")
         .replacingOccurrences(of: "\"", with: "\\\"")
     return "\"\(escaped)\""
+}
+
+func parseVPNProfileName(_ line: String) -> String? {
+    guard line.contains("[VPN") else { return nil }
+    let parts = line.split(separator: "\"", omittingEmptySubsequences: false)
+    guard parts.count >= 2 else { return nil }
+    let name = String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+    return name.replacingOccurrences(
+        of: #"\s+\[[^\]]+\]$"#,
+        with: "",
+        options: .regularExpression
+    )
 }

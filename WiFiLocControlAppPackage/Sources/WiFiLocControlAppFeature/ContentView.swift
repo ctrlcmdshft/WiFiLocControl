@@ -14,7 +14,9 @@ public struct ContentView: View {
                 Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
+            .listStyle(.sidebar)
+            .navigationTitle("WiFiLocControl")
+            .navigationSplitViewColumnWidth(min: 165, ideal: 180)
         } detail: {
             Group {
                 switch selection ?? .overview {
@@ -28,7 +30,29 @@ public struct ContentView: View {
                     LogsView(model: model)
                 }
             }
-            .frame(minWidth: 860, minHeight: 620)
+            .frame(minWidth: 680, minHeight: 460)
+            .toolbar {
+                ToolbarItemGroup {
+                    if model.isBusy {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+
+                    Button {
+                        model.refresh()
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .help("Reload locations, status, add-ons, and logs.")
+
+                    Button {
+                        model.save()
+                    } label: {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }
+                    .help("Write the current configuration to disk.")
+                }
+            }
         }
     }
 }

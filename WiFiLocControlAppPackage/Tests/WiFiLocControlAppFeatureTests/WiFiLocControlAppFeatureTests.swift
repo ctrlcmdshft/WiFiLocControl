@@ -22,3 +22,8 @@ import Testing
 @Test func shellConfigValueEscapesQuotesAndBackslashes() {
     #expect(shellConfigValue(#"/Users/me/Pictures/a "nice" shot.jpg"#) == #""/Users/me/Pictures/a \"nice\" shot.jpg""#)
 }
+
+@Test func vpnProfileParserStripsProviderSuffix() {
+    let line = #"*  "MacBook_Air_Automatic-US-NY-465 [VPN:com.wireguard.macos]""#
+    #expect(parseVPNProfileName(line) == "MacBook_Air_Automatic-US-NY-465")
+}

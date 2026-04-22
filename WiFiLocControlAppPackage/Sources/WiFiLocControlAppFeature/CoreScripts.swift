@@ -4,11 +4,18 @@ enum CoreScripts {
     static let coreAgent = #"""
     #!/usr/bin/env bash
     LOGS_PATH="$HOME/Library/Logs/WiFiLocControl.log"
+    LOG_MAX_BYTES=5242880
     DEFAULT_NETWORK_LOCATION="Automatic"
     CONFIG_DIR="$HOME/.wifi-loc-control"
     ALIAS_CONFIG_PATH="$CONFIG_DIR/alias.conf"
 
     mkdir -p "$(dirname "$LOGS_PATH")"
+    if [[ -f "$LOGS_PATH" ]]; then
+      log_size=$(wc -c < "$LOGS_PATH" | tr -d '[:space:]')
+      if [[ "$log_size" =~ ^[0-9]+$ && "$log_size" -gt "$LOG_MAX_BYTES" ]]; then
+        tail -c "$LOG_MAX_BYTES" "$LOGS_PATH" > "$LOGS_PATH.tmp" && mv "$LOGS_PATH.tmp" "$LOGS_PATH"
+      fi
+    fi
     exec >> "$LOGS_PATH" 2>&1
     sleep 3
 

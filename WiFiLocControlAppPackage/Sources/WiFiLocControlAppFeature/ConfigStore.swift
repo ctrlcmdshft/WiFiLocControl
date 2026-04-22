@@ -69,6 +69,19 @@ struct ConfigStore {
         return String(data: Data(suffix), encoding: .utf8) ?? ""
     }
 
+    func logByteCount() -> Int {
+        guard let values = try? fileManager.attributesOfItem(atPath: logURL.path),
+              let size = values[.size] as? NSNumber else {
+            return 0
+        }
+        return size.intValue
+    }
+
+    func clearLog() throws {
+        try fileManager.createDirectory(at: logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: logURL, options: .atomic)
+    }
+
     private func readConfig(_ fileName: String) -> [String: String] {
         let url = configURL.appending(path: fileName)
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [:] }

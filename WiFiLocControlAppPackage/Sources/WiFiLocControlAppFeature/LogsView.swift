@@ -4,27 +4,44 @@ struct LogsView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HeaderView(title: "Logs", subtitle: "Recent entries from ~/Library/Logs/WiFiLocControl.log")
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("Size: \(model.logInfo.sizeText)")
+                    .foregroundStyle(.secondary)
 
-            ScrollView {
-                Text(model.logText.isEmpty ? "No log entries yet." : model.logText)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-            }
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+                if model.logInfo.byteCount > model.logInfo.displayedByteLimit {
+                    Text("Showing last \(model.logInfo.displayLimitText)")
+                        .foregroundStyle(.secondary)
+                }
 
-            HStack {
                 Spacer()
+
                 Button {
-                    model.refresh()
+                    model.clearLog()
                 } label: {
-                    Label("Refresh Logs", systemImage: "arrow.clockwise")
+                    Label("Clear Log", systemImage: "trash")
+                }
+                .disabled(model.logInfo.byteCount == 0)
+                .help("Empty ~/Library/Logs/WiFiLocControl.log")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            if model.logText.isEmpty {
+                ContentUnavailableView("No Log Entries", systemImage: "doc.text.magnifyingglass")
+            } else {
+                ScrollView {
+                    Text(model.logText)
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
                 }
             }
         }
-        .padding(24)
+        .background(Color(nsColor: .textBackgroundColor))
+        .navigationTitle("Logs")
     }
 }

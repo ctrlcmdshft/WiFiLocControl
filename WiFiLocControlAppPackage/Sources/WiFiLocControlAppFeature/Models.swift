@@ -111,5 +111,19 @@ public struct SystemStatus: Hashable {
     public var switchAudioInstalled = false
     public var brightnessInstalled = false
     public var terminalNotifierInstalled = false
+    public var audioOutputDevices: [String] = []
     public var vpnProfiles: [String] = []
+}
+
+public struct LogInfo: Hashable {
+    public var byteCount = 0
+    public var displayedByteLimit = 50_000
+
+    public var sizeText: String {
+        ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
+    }
+
+    public var displayLimitText: String {
+        ByteCountFormatter.string(fromByteCount: Int64(displayedByteLimit), countStyle: .file)
+    }
 }
